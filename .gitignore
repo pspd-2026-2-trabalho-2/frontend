@@ -4,3 +4,6 @@ dist-ssr
 *.local
 .env
 npm-debug.log*
+
+# anotações locais de desenvolvimento (não versionar)
+*.local.md

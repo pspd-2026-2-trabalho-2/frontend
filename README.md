@@ -1,11 +1,17 @@
 # HU Frontend
 
-Frontend do prontuário do Hospital Universitário (login + tela de consulta). Vite + React + TypeScript + Tailwind v4 + shadcn. Ver o contexto completo em [`../specs/`](../specs/).
+Frontend do prontuário eletrônico do Hospital Universitário: tela de login e tela de
+consulta, com os dados exibidos de acordo com o perfil do usuário (médico, estagiário
+ou pesquisador). Construído com Vite, React, TypeScript, Tailwind e shadcn.
+
+A autenticação é feita contra um servidor Keycloak (OAuth2/OpenID Connect), que emite
+o token JWT usado em todas as chamadas à API.
 
 ## Requisitos
 
 - Node 20+
-- O Keycloak subindo em paralelo (ver [`../keycloak/README.md`](../keycloak/README.md)) — o login é sempre real, nunca mockado.
+- Keycloak rodando em `http://localhost:8080` com o realm `hu` (o login é sempre real,
+  nunca simulado).
 
 ## Rodar
 
@@ -15,22 +21,28 @@ cp .env.example .env
 npm run dev
 ```
 
-Acesse `http://localhost:5173`. Com `VITE_USE_MOCKS=true` (padrão do `.env.example`), todas as chamadas a `/api/*` são respondidas pelo MSW seguindo o contrato em [`../specs/contracts/api-gateway.md`](../specs/contracts/api-gateway.md) — não é necessário ter a API Gateway rodando para testar a tela de consulta.
+A aplicação sobe em `http://localhost:5173`.
+
+Com `VITE_USE_MOCKS=true` (padrão do `.env.example`), as chamadas de dados clínicos são
+respondidas localmente por um mock, então a tela de consulta funciona sem depender do
+backend. Para consumir a API real, coloque a URL em `VITE_API_URL` e defina
+`VITE_USE_MOCKS=false`.
 
 ## Testar com os 3 perfis
 
-Com o Keycloak rodando (`docker compose up` em `keycloak/`), faça login em `/login` com cada um dos usuários de exemplo:
+Com o Keycloak rodando, faça login com cada usuário de exemplo:
 
-| Usuário | Senha | Role | O que ver na tela de consulta |
+| Usuário | Senha | Perfil | Tela de consulta |
 |---|---|---|---|
-| `med.cardoso` | `pspd123` | MEDICO | Lista de pacientes com dados completos (nome, CPF, CNS); abas Resumo/Histórico/Exames/Medicamentos. |
-| `est.silva` | `pspd123` | ESTAGIARIO | Mesma estrutura de telas, mas pacientes aparecem com iniciais e sem CPF/CNS/endereço completo. |
-| `pesq.souza` | `pspd123` | PESQUISADOR | Sem lista de pacientes: seletor de coorte (Diabetes/Hipertensão) com estatísticas agregadas e exames pseudonimizados, mais lista de projetos de pesquisa. |
+| `med.cardoso` | `pspd123` | Médico | Lista de pacientes com dados completos (nome, CPF, CNS); abas Resumo, Histórico, Exames e Medicamentos. |
+| `est.silva` | `pspd123` | Estagiário | Mesmas telas, mas com pacientes anonimizados (iniciais, sem CPF/CNS/endereço). |
+| `pesq.souza` | `pspd123` | Pesquisador | Seletor de coorte com estatísticas agregadas e exames pseudonimizados, mais a lista de projetos de pesquisa. |
 
-Cenários de erro para validar manualmente:
-- Senha errada em `/login` → mensagem de erro inline, sem reload da página.
-- Acessar `http://localhost:5173/consulta` sem login → redirect automático para `/login`.
-- Logout (botão no header) → volta para `/login` e limpa a sessão (`sessionStorage`).
+Casos de erro para conferir:
+
+- Senha errada no login → mensagem de erro sem recarregar a página.
+- Acessar `/consulta` sem estar logado → redireciona para `/login`.
+- Logout no cabeçalho → volta para `/login` e limpa a sessão.
 
 ## Build
 
@@ -38,32 +50,28 @@ Cenários de erro para validar manualmente:
 npm run build
 ```
 
-Roda `tsc -b` (checagem de tipos) seguido de `vite build`. A saída fica em `dist/`.
+Roda a checagem de tipos (`tsc -b`) e gera a versão de produção em `dist/`.
 
 ## Variáveis de ambiente
 
-Ver [`.env.example`](.env.example). Resumo:
+Todas em `.env.example`:
 
-- `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID`: endpoint de token do Keycloak.
-- `VITE_API_URL`: URL da API Gateway (ignorado enquanto mocks estiverem ativos).
-- `VITE_USE_MOCKS`: liga/desliga o MSW. Ver [`../specs/frontend/plan.md`](../specs/frontend/plan.md) para a estratégia de mock e o que muda quando a API Gateway real existir.
+- `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID` — endpoint do Keycloak.
+- `VITE_API_URL` — URL da API (usada quando os mocks estão desligados).
+- `VITE_USE_MOCKS` — liga/desliga o mock dos dados clínicos.
 
 ## Estrutura
 
 ```
 src/
-├── index.css              # design system (tokens, cores, fontes)
-├── main.tsx / App.tsx      # bootstrap, providers, rotas
-├── routes/                 # Login, Consulta
+├── index.css               # design system (cores, fontes, tokens)
+├── main.tsx / App.tsx       # bootstrap, providers e rotas
+├── routes/                  # Login, Consulta
 ├── components/
-│   ├── ui/                 # componentes shadcn (button, card, table, ...)
+│   ├── ui/                  # componentes de interface (button, card, table, ...)
 │   ├── layout/              # Header, AppShell
 │   └── consulta/            # PatientList, ClinicalSummary, CohortStats, ...
-├── features/auth/           # AuthProvider, useAuth, ProtectedRoute, cliente Keycloak
-├── lib/                     # api.ts (fetch com Bearer), fhir.ts (tipos FHIR), utils.ts
-└── mocks/                   # MSW: handlers + fixtures FHIR por perfil
+├── features/auth/           # login, sessão, rota protegida e cliente Keycloak
+├── lib/                     # api (fetch com token), tipos FHIR, utilitários
+└── mocks/                   # mock de dados clínicos por perfil
 ```
-
-## O que falta / está fora do escopo desta fase
-
-Ver [`../specs/frontend/tasks.md`](../specs/frontend/tasks.md) — inclui integração com a API Gateway real, métricas Prometheus, Dockerfile e manifests K8s.
