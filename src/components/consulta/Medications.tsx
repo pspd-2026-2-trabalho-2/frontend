@@ -18,13 +18,15 @@ export function Medications({ patientId }: { patientId: string }) {
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const medications = data ? resourcesOfType<MedicationRequest>(data, "MedicationRequest") : [];
+  const medications = useMemo(
+    () => (data ? resourcesOfType<MedicationRequest>(data, "MedicationRequest") : []),
+    [data],
+  );
 
   const filteredMedications = useMemo(() => {
     if (statusFilter === "active") return medications.filter((m) => m.status === "active");
     if (statusFilter === "other") return medications.filter((m) => m.status !== "active");
     return medications;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [medications, statusFilter]);
 
   if (isLoading) return <Skeleton className="h-48 w-full" />;

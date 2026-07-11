@@ -29,35 +29,35 @@ export function ClinicalHistory({ patientId }: { patientId: string }) {
 
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_FILTERS)[number]>("Todos");
 
-  const entries: TimelineEntry[] = data
-    ? [
-        ...resourcesOfType<Encounter>(data, "Encounter").map((e) => ({
-          date: e.period.start,
-          label: "Atendimento",
-          detail: e.serviceType?.text ?? "",
-        })),
-        ...resourcesOfType<Condition>(data, "Condition").map((c) => ({
-          date: c.recordedDate ?? "",
-          label: "Diagnóstico",
-          detail: c.code.text,
-        })),
-        ...resourcesOfType<Observation>(data, "Observation").map((o) => ({
-          date: o.effectiveDateTime ?? "",
-          label: "Exame",
-          detail: `${o.code.text}: ${o.valueQuantity?.value} ${o.valueQuantity?.unit ?? ""}`,
-        })),
-        ...resourcesOfType<MedicationRequest>(data, "MedicationRequest").map((m) => ({
-          date: m.authoredOn ?? "",
-          label: "Medicação",
-          detail: m.medicationCodeableConcept.text,
-        })),
-      ].sort((a, b) => b.date.localeCompare(a.date))
-    : [];
+  const entries: TimelineEntry[] = useMemo(() => {
+    if (!data) return [];
+    return [
+      ...resourcesOfType<Encounter>(data, "Encounter").map((e) => ({
+        date: e.period.start,
+        label: "Atendimento",
+        detail: e.serviceType?.text ?? "",
+      })),
+      ...resourcesOfType<Condition>(data, "Condition").map((c) => ({
+        date: c.recordedDate ?? "",
+        label: "Diagnóstico",
+        detail: c.code.text,
+      })),
+      ...resourcesOfType<Observation>(data, "Observation").map((o) => ({
+        date: o.effectiveDateTime ?? "",
+        label: "Exame",
+        detail: `${o.code.text}: ${o.valueQuantity?.value} ${o.valueQuantity?.unit ?? ""}`,
+      })),
+      ...resourcesOfType<MedicationRequest>(data, "MedicationRequest").map((m) => ({
+        date: m.authoredOn ?? "",
+        label: "Medicação",
+        detail: m.medicationCodeableConcept.text,
+      })),
+    ].sort((a, b) => b.date.localeCompare(a.date));
+  }, [data]);
 
   const filteredEntries = useMemo(() => {
     if (typeFilter === "Todos") return entries;
     return entries.filter((entry) => entry.label === typeFilter);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries, typeFilter]);
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;

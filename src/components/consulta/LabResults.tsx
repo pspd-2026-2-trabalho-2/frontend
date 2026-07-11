@@ -15,13 +15,15 @@ export function LabResults({ patientId }: { patientId: string }) {
 
   const [filter, setFilter] = useState("");
 
-  const observations = data ? resourcesOfType<Observation>(data, "Observation") : [];
+  const observations = useMemo(
+    () => (data ? resourcesOfType<Observation>(data, "Observation") : []),
+    [data],
+  );
 
   const filteredObservations = useMemo(() => {
     const needle = filter.trim().toLowerCase();
     if (!needle) return observations;
     return observations.filter((o) => o.code.text.toLowerCase().includes(needle));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [observations, filter]);
 
   if (isLoading) return <Skeleton className="h-48 w-full" />;
