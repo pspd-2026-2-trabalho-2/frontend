@@ -37,6 +37,7 @@ export function PatientList({
   const [gender, setGender] = useState<Gender>("");
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const generationRef = useRef(0);
 
   const fetchPage = isIntern ? api.supervisedPatients : api.doctorPatients;
 
@@ -50,6 +51,7 @@ export function PatientList({
 
   useEffect(() => {
     let cancelled = false;
+    generationRef.current += 1;
     setIsLoading(true);
     setError(null);
 
@@ -75,14 +77,17 @@ export function PatientList({
   }, [isIntern, search, gender]);
 
   async function loadMore() {
+    const generation = generationRef.current;
     setIsLoadingMore(true);
     try {
       const nextPage = page + 1;
       const { data, hasMore: more } = await fetchPage(nextPage, PAGE_SIZE, search, gender);
+      if (generation !== generationRef.current) return;
       setPatients((prev) => [...prev, ...resourcesOfType<Patient>(data, "Patient")]);
       setPage(nextPage);
       setHasMore(more);
     } catch (err) {
+      if (generation !== generationRef.current) return;
       toast.error(err instanceof Error ? err.message : "Falha ao carregar mais pacientes.");
     } finally {
       setIsLoadingMore(false);
