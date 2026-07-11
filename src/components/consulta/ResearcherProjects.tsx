@@ -8,15 +8,17 @@ import { resourcesOfType, type ResearchStudy } from "@/lib/fhir";
 const STATUS_LABELS: Record<ResearchStudy["status"], string> = {
   active: "Aprovado",
   completed: "Concluído",
-  suspended: "Suspenso",
-  "administratively-completed": "Expirado",
+  "temporarily-closed-to-accrual": "Suspenso",
+  withdrawn: "Rejeitado",
+  "in-progress": "Pendente",
 };
 
 const STATUS_VARIANT: Record<ResearchStudy["status"], "default" | "secondary" | "destructive"> = {
   active: "default",
   completed: "secondary",
-  suspended: "destructive",
-  "administratively-completed": "secondary",
+  "temporarily-closed-to-accrual": "destructive",
+  withdrawn: "destructive",
+  "in-progress": "secondary",
 };
 
 export function ResearcherProjects() {
@@ -40,13 +42,7 @@ export function ResearcherProjects() {
               <Badge variant={STATUS_VARIANT[project.status]}>
                 {STATUS_LABELS[project.status]}
               </Badge>
-              <Badge variant="secondary">{project.condition[0]?.text}</Badge>
             </div>
-            {project.period?.end && (
-              <p className="text-muted-foreground">
-                Válido até: <span className="font-data">{project.period.end}</span>
-              </p>
-            )}
           </CardContent>
         </Card>
       ))}

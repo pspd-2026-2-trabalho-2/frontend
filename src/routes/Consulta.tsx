@@ -13,8 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/features/auth/useAuth";
 
 const COHORTS = [
-  { code: "diabetes", label: "Diabetes" },
-  { code: "hipertensao", label: "Hipertensão" },
+  { code: "DIABETES", label: "Diabetes" },
+  { code: "HYPERTENSION", label: "Hipertensão" },
 ];
 
 function MedicoOuEstagiarioView() {

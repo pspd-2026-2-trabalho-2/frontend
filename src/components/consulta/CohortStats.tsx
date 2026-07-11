@@ -3,7 +3,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAsync } from "@/hooks/useAsync";
 import { api } from "@/lib/api";
-import { parseCohortStats, type FhirResource, type Observation, type Patient } from "@/lib/fhir";
+import {
+  AGE_RANGE_EXTENSION_URL,
+  type CohortPercentage,
+  type FhirResource,
+  type Observation,
+  type Patient,
+} from "@/lib/fhir";
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
@@ -14,19 +20,22 @@ function StatTile({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-function DistributionList({ title, data }: { title: string; data: Record<string, number> }) {
+function DistributionList({ title, data }: { title: string; data: CohortPercentage[] }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-1 text-sm">
-        {Object.entries(data).map(([key, pct]) => (
-          <div key={key} className="flex items-center justify-between">
-            <span>{key}</span>
-            <span className="font-data">{pct}%</span>
+        {data.map((item) => (
+          <div key={item.key} className="flex items-center justify-between">
+            <span>{item.key}</span>
+            <span className="font-data">{item.percentage}%</span>
           </div>
         ))}
+        {data.length === 0 && (
+          <p className="text-muted-foreground">Sem dados suficientes.</p>
+        )}
       </CardContent>
     </Card>
   );
@@ -45,31 +54,30 @@ function groupByPatient(resources: FhirResource[]) {
 }
 
 export function CohortStats({ code }: { code: string }) {
-  const stats = useAsync(() => api.cohortStats(code), [code]);
-  const observations = useAsync(() => api.cohortObservations(code), [code]);
+  const stats = useAsync(() => api.cohortStatistics(code), [code]);
+  const exams = useAsync(() => api.cohortExams(code), [code]);
 
-  if (stats.isLoading || observations.isLoading) return <Skeleton className="h-64 w-full" />;
+  if (stats.isLoading || exams.isLoading) return <Skeleton className="h-64 w-full" />;
   if (stats.error) return <p className="text-sm text-destructive">{stats.error}</p>;
-  if (observations.error) return <p className="text-sm text-destructive">{observations.error}</p>;
-  if (!stats.data || !observations.data) return null;
+  if (exams.error) return <p className="text-sm text-destructive">{exams.error}</p>;
+  if (!stats.data || !exams.data) return null;
 
-  const parsed = parseCohortStats(stats.data);
-  const groups = groupByPatient(observations.data.entry.map((e) => e.resource));
+  const total = Number(stats.data.totalPatients ?? "0");
+  const female = stats.data.bySex?.find((s) => s.key === "female")?.percentage ?? 0;
+  const male = stats.data.bySex?.find((s) => s.key === "male")?.percentage ?? 0;
+  const groups = groupByPatient(exams.data.entry.map((e) => e.resource));
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatTile label="Total de casos" value={parsed.total.toLocaleString("pt-BR")} />
-        <StatTile
-          label="% Mulheres"
-          value={`${parsed.genderDistribution.female ?? 0}%`}
-        />
-        <StatTile label="% Homens" value={`${parsed.genderDistribution.male ?? 0}%`} />
+        <StatTile label="Total de casos" value={total.toLocaleString("pt-BR")} />
+        <StatTile label="% Mulheres" value={`${female}%`} />
+        <StatTile label="% Homens" value={`${male}%`} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <DistributionList title="Faixa etária" data={parsed.ageDistribution} />
-        <DistributionList title="Departamentos mais usados" data={parsed.departmentDistribution} />
+        <DistributionList title="Faixa etária" data={stats.data.byAgeRange ?? []} />
+        <DistributionList title="Departamentos mais usados" data={stats.data.byDepartment ?? []} />
       </div>
 
       <Card>
@@ -92,7 +100,7 @@ export function CohortStats({ code }: { code: string }) {
                   <TableCell className="font-data">{patient.id}</TableCell>
                   <TableCell>{patient.gender === "male" ? "M" : "F"}</TableCell>
                   <TableCell className="font-data">
-                    {patient.extension?.find((e) => e.url === "ageRange")?.valueString}
+                    {patient.extension?.find((e) => e.url === AGE_RANGE_EXTENSION_URL)?.valueString}
                   </TableCell>
                   <TableCell className="font-data">
                     {observations

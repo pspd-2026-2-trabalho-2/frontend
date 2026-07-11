@@ -7,7 +7,7 @@ import { resourcesOfType, type MedicationRequest } from "@/lib/fhir";
 
 export function Medications({ patientId }: { patientId: string }) {
   const { data, error, isLoading } = useAsync(
-    () => api.patientMedications(patientId),
+    () => api.patientHistory(patientId),
     [patientId],
   );
 

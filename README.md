@@ -4,14 +4,15 @@ Frontend do prontuário eletrônico do Hospital Universitário: tela de login e 
 consulta, com os dados exibidos de acordo com o perfil do usuário (médico, estagiário
 ou pesquisador). Construído com Vite, React, TypeScript, Tailwind e shadcn.
 
-A autenticação é feita contra um servidor Keycloak (OAuth2/OpenID Connect), que emite
-o token JWT usado em todas as chamadas à API.
+A autenticação é feita contra o Keycloak do cluster kiriland (OAuth2/OpenID Connect,
+realm `grupo03`), que emite o token JWT (RS256) usado em todas as chamadas à API. Todos
+os dados de consulta vêm do API Gateway real — não há mais mocks.
 
 ## Requisitos
 
 - Node 20+
-- Keycloak rodando em `http://localhost:8080` com o realm `hu` (o login é sempre real,
-  nunca simulado).
+- Acesso ao Keycloak em `https://kiriland.unb.br/keycloak` (realm `grupo03`) e ao
+  [API Gateway](../gateway-authorization-service) rodando localmente em `http://localhost:8080`.
 
 ## Rodar
 
@@ -23,20 +24,15 @@ npm run dev
 
 A aplicação sobe em `http://localhost:5173`.
 
-Com `VITE_USE_MOCKS=true` (padrão do `.env.example`), as chamadas de dados clínicos são
-respondidas localmente por um mock, então a tela de consulta funciona sem depender do
-backend. Para consumir a API real, coloque a URL em `VITE_API_URL` e defina
-`VITE_USE_MOCKS=false`.
-
 ## Testar com os 3 perfis
 
-Com o Keycloak rodando, faça login com cada usuário de exemplo:
+Faça login com cada usuário de teste do realm `grupo03` (senha padrão `PseudoPEP2026!`):
 
-| Usuário | Senha | Perfil | Tela de consulta |
-|---|---|---|---|
-| `med.cardoso` | `pspd123` | Médico | Lista de pacientes com dados completos (nome, CPF, CNS); abas Resumo, Histórico, Exames e Medicamentos. |
-| `est.silva` | `pspd123` | Estagiário | Mesmas telas, mas com pacientes anonimizados (iniciais, sem CPF/CNS/endereço). |
-| `pesq.souza` | `pspd123` | Pesquisador | Seletor de coorte com estatísticas agregadas e exames pseudonimizados, mais a lista de projetos de pesquisa. |
+| Usuário | Perfil | Tela de consulta |
+|---|---|---|
+| `med.*` (ex.: `med.cardoso`) | Médico | Lista de pacientes com dados completos (nome, CPF, CNS); abas Resumo, Histórico, Exames e Medicamentos. |
+| `est.*` (ex.: `est.ferreira`) | Estagiário | Mesmas telas, mas com pacientes anonimizados (iniciais, sem CPF/CNS/endereço). |
+| `pes.*` (ex.: `pes.mendes`) | Pesquisador | Seletor de coorte com estatísticas agregadas e exames pseudonimizados, mais a lista de projetos de pesquisa. |
 
 Casos de erro para conferir:
 
@@ -57,8 +53,7 @@ Roda a checagem de tipos (`tsc -b`) e gera a versão de produção em `dist/`.
 Todas em `.env.example`:
 
 - `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID` — endpoint do Keycloak.
-- `VITE_API_URL` — URL da API (usada quando os mocks estão desligados).
-- `VITE_USE_MOCKS` — liga/desliga o mock dos dados clínicos.
+- `VITE_API_URL` — URL do API Gateway.
 
 ## Estrutura
 
@@ -72,6 +67,5 @@ src/
 │   ├── layout/              # Header, AppShell
 │   └── consulta/            # PatientList, ClinicalSummary, CohortStats, ...
 ├── features/auth/           # login, sessão, rota protegida e cliente Keycloak
-├── lib/                     # api (fetch com token), tipos FHIR, utilitários
-└── mocks/                   # mock de dados clínicos por perfil
+└── lib/                     # api (fetch com token), tipos FHIR, utilitários
 ```

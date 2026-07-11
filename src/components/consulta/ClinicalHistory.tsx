@@ -33,7 +33,7 @@ export function ClinicalHistory({ patientId }: { patientId: string }) {
       detail: e.serviceType?.text ?? "",
     })),
     ...resourcesOfType<Condition>(data, "Condition").map((c) => ({
-      date: c.onsetDateTime ?? "",
+      date: c.recordedDate ?? "",
       label: "Diagnóstico",
       detail: c.code.text,
     })),

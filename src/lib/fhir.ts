@@ -20,7 +20,7 @@ export interface Encounter {
   resourceType: "Encounter";
   id: string;
   status: string;
-  class?: string;
+  type?: { text: string }[];
   period: { start: string; end?: string };
   serviceType?: { text: string };
 }
@@ -29,7 +29,7 @@ export interface Condition {
   resourceType: "Condition";
   id: string;
   code: { text: string };
-  onsetDateTime?: string;
+  recordedDate?: string;
   subject?: { reference: string };
 }
 
@@ -49,27 +49,20 @@ export interface MedicationRequest {
   authoredOn?: string;
 }
 
-export interface Group {
-  resourceType: "Group";
-  id: string;
-  name: string;
-  quantity: number;
-}
-
-export interface CohortStats {
-  resourceType: "Basic";
-  code: { text: "cohort-stats" };
-  extension: { url: string; valueInteger?: number; valueString?: string }[];
-}
-
 export interface ResearchStudy {
   resourceType: "ResearchStudy";
   id: string;
   title: string;
-  status: "active" | "completed" | "suspended" | "administratively-completed";
-  condition: { text: string }[];
-  period?: { end?: string };
+  status:
+    | "active"
+    | "completed"
+    | "temporarily-closed-to-accrual"
+    | "withdrawn"
+    | "in-progress";
 }
+
+export const AGE_RANGE_EXTENSION_URL =
+  "http://pspd.unb.br/fhir/StructureDefinition/age-range";
 
 export type FhirResource =
   | Patient
@@ -77,7 +70,6 @@ export type FhirResource =
   | Condition
   | Observation
   | MedicationRequest
-  | Group
   | ResearchStudy;
 
 export function resourcesOfType<T extends FhirResource>(
@@ -89,17 +81,24 @@ export function resourcesOfType<T extends FhirResource>(
     .filter((r): r is T => r.resourceType === resourceType);
 }
 
-export function parseCohortStats(basic: CohortStats) {
-  const get = (url: string) => basic.extension.find((e) => e.url === url);
-  const parseDistribution = (url: string): Record<string, number> => {
-    const raw = get(url)?.valueString;
-    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
-  };
+// CohortStatisticsResponse do gateway (não é um recurso FHIR — vem do
+// datatransform.v1.CohortStatisticsResponse). Campos int64 (total_patients,
+// count) são serializados como string pelo protojson.
+export interface CohortPercentage {
+  key: string;
+  count: string;
+  percentage: number;
+}
 
-  return {
-    total: get("total")?.valueInteger ?? 0,
-    genderDistribution: parseDistribution("genderDistribution"),
-    ageDistribution: parseDistribution("ageDistribution"),
-    departmentDistribution: parseDistribution("departmentDistribution"),
-  };
+// Campos com valor zero (0, "", []) são omitidos pelo protojson, por isso
+// todos aparecem como opcionais aqui.
+export interface CohortStatistics {
+  conditionCode?: string;
+  totalPatients?: string;
+  bySex?: CohortPercentage[];
+  byAgeRange?: CohortPercentage[];
+  meanHba1c?: number;
+  medianHba1c?: number;
+  medicationFrequency?: CohortPercentage[];
+  byDepartment?: CohortPercentage[];
 }

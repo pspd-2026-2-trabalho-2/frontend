@@ -6,7 +6,7 @@ import { resourcesOfType, type Observation } from "@/lib/fhir";
 
 export function LabResults({ patientId }: { patientId: string }) {
   const { data, error, isLoading } = useAsync(
-    () => api.patientObservations(patientId),
+    () => api.patientHistory(patientId),
     [patientId],
   );
 

@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/features/auth/useAuth";
 import { useAsync } from "@/hooks/useAsync";
 import { api } from "@/lib/api";
 import { resourcesOfType, type Patient } from "@/lib/fhir";
@@ -12,7 +13,12 @@ export function PatientList({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
-  const { data, error, isLoading } = useAsync(() => api.patients(), []);
+  const { user } = useAuth();
+  const isIntern = user?.role === "ESTAGIARIO";
+  const { data, error, isLoading } = useAsync(
+    () => (isIntern ? api.supervisedPatients() : api.doctorPatients()),
+    [isIntern],
+  );
   const patients = data ? resourcesOfType<Patient>(data, "Patient") : [];
 
   if (isLoading) {

@@ -1,5 +1,5 @@
 import { getAccessToken, notifyUnauthorized } from "@/features/auth/tokenStore";
-import type { CohortStats, FhirBundle } from "@/lib/fhir";
+import type { CohortStatistics, FhirBundle } from "@/lib/fhir";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -42,16 +42,12 @@ async function request<T>(path: string): Promise<T> {
 }
 
 export const api = {
-  patients: () => request<FhirBundle>("/api/patients"),
+  doctorPatients: () => request<FhirBundle>("/api/me/patients"),
+  supervisedPatients: () => request<FhirBundle>("/api/me/supervised-patients"),
   patientSummary: (id: string) => request<FhirBundle>(`/api/patients/${id}/summary`),
   patientHistory: (id: string) => request<FhirBundle>(`/api/patients/${id}/history`),
-  patientObservations: (id: string) =>
-    request<FhirBundle>(`/api/patients/${id}/observations`),
-  patientMedications: (id: string) =>
-    request<FhirBundle>(`/api/patients/${id}/medications`),
-  cohorts: () => request<FhirBundle>("/api/cohorts"),
-  cohortStats: (code: string) => request<CohortStats>(`/api/cohorts/${code}/stats`),
-  cohortObservations: (code: string) =>
-    request<FhirBundle>(`/api/cohorts/${code}/observations`),
-  projects: () => request<FhirBundle>("/api/projects"),
+  cohortStatistics: (code: string) =>
+    request<CohortStatistics>(`/api/cohorts/${code}/statistics`),
+  cohortExams: (code: string) => request<FhirBundle>(`/api/cohorts/${code}/exams`),
+  projects: () => request<FhirBundle>("/api/me/projects"),
 };
