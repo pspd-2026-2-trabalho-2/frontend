@@ -61,10 +61,18 @@ async function requestPage<T>(path: string): Promise<Page<T>> {
 }
 
 export const api = {
-  doctorPatients: (page = 1, pageSize = 50) =>
-    requestPage<FhirBundle>(`/api/me/patients?page=${page}&pageSize=${pageSize}`),
-  supervisedPatients: (page = 1, pageSize = 50) =>
-    requestPage<FhirBundle>(`/api/me/supervised-patients?page=${page}&pageSize=${pageSize}`),
+  doctorPatients: (page = 1, pageSize = 50, search = "", gender = "") => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (search) params.set("search", search);
+    if (gender) params.set("gender", gender);
+    return requestPage<FhirBundle>(`/api/me/patients?${params}`);
+  },
+  supervisedPatients: (page = 1, pageSize = 50, search = "", gender = "") => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (search) params.set("search", search);
+    if (gender) params.set("gender", gender);
+    return requestPage<FhirBundle>(`/api/me/supervised-patients?${params}`);
+  },
   patientSummary: (id: string) => request<FhirBundle>(`/api/patients/${id}/summary`),
   patientHistory: (id: string) => request<FhirBundle>(`/api/patients/${id}/history`),
   cohortStatistics: (code: string) =>
