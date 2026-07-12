@@ -2,7 +2,7 @@ export interface FhirBundle<T = FhirResource> {
   resourceType: "Bundle";
   type: "searchset" | "collection";
   total?: number;
-  entry: { resource: T }[];
+  entry?: { resource: T }[];
 }
 
 export interface Patient {
@@ -76,7 +76,7 @@ export function resourcesOfType<T extends FhirResource>(
   bundle: FhirBundle,
   resourceType: T["resourceType"],
 ): T[] {
-  return bundle.entry
+  return (bundle.entry ?? [])
     .map((e) => e.resource)
     .filter((r): r is T => r.resourceType === resourceType);
 }

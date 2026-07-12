@@ -1,6 +1,7 @@
+import { useDebounce } from "@uidotdev/usehooks";
 import { Search, UsersRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import useSWRInfinite from "swr/infinite";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/features/auth/useAuth";
-import { api } from "@/lib/api";
-import { resourcesOfType, type Patient } from "@/lib/fhir";
+import { api, type Page } from "@/lib/api";
+import { resourcesOfType, type FhirBundle, type Patient } from "@/lib/fhir";
 import { cn, formatDate } from "@/lib/utils";
 
 const PAGE_SIZE = 50;
@@ -37,91 +38,60 @@ export function PatientList({
   const { user } = useAuth();
   const isIntern = user?.role === "ESTAGIARIO";
 
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
   const [searchInput, setSearchInput] = useState("");
-  const [search, setSearch] = useState("");
   const [gender, setGender] = useState<Gender>("");
+  const debouncedSearch = useDebounce(searchInput, 350);
 
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  const generationRef = useRef(0);
 
-  const fetchPage = isIntern ? api.supervisedPatients : api.doctorPatients;
+  type PatientsKey = readonly ["patients", boolean, number, number, string, Gender];
 
-  // Debounce: só propaga o valor digitado para `search` (e portanto para a API)
-  // 350ms após o usuário parar de digitar, mantendo a taxa de requisições bem
-  // abaixo do rate limit do gateway (10 rps / burst 20).
+  const getKey = (index: number, previousPageData: Page<FhirBundle> | null): PatientsKey | null => {
+    if (previousPageData && !previousPageData.hasMore) return null;
+    return ["patients", isIntern, index + 1, PAGE_SIZE, debouncedSearch, gender];
+  };
+
+  const { data, size, setSize, isLoading, error } = useSWRInfinite<Page<FhirBundle>>(
+    getKey,
+    ([, intern, page, pageSize, search, g]: PatientsKey) =>
+      (intern ? api.supervisedPatients : api.doctorPatients)(page, pageSize, search, g),
+    { revalidateFirstPage: false },
+  );
+
   useEffect(() => {
-    const timeout = setTimeout(() => setSearch(searchInput), 350);
-    return () => clearTimeout(timeout);
-  }, [searchInput]);
+    void setSize(1);
+  }, [debouncedSearch, gender, isIntern, setSize]);
 
-  useEffect(() => {
-    let cancelled = false;
-    generationRef.current += 1;
-    setIsLoading(true);
-    setError(null);
+  const patients = data?.flatMap((p) => resourcesOfType<Patient>(p.data, "Patient")) ?? [];
+  const hasMore = data?.[data.length - 1]?.hasMore ?? false;
+  const isLoadingMore = size > 0 && data && typeof data[size - 1] === "undefined";
+  const errorMessage = error instanceof Error ? error.message : error ? "Erro inesperado." : null;
 
-    fetchPage(1, PAGE_SIZE, search, gender)
-      .then(({ data, hasMore }) => {
-        if (cancelled) return;
-        setPatients(resourcesOfType<Patient>(data, "Patient"));
-        setPage(1);
-        setHasMore(hasMore);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Erro inesperado.");
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isIntern, search, gender]);
-
-  async function loadMore() {
-    const generation = generationRef.current;
-    setIsLoadingMore(true);
-    try {
-      const nextPage = page + 1;
-      const { data, hasMore: more } = await fetchPage(nextPage, PAGE_SIZE, search, gender);
-      if (generation !== generationRef.current) return;
-      setPatients((prev) => [...prev, ...resourcesOfType<Patient>(data, "Patient")]);
-      setPage(nextPage);
-      setHasMore(more);
-    } catch (err) {
-      if (generation !== generationRef.current) return;
-      toast.error(err instanceof Error ? err.message : "Falha ao carregar mais pacientes.");
-    } finally {
-      setIsLoadingMore(false);
-    }
+  function loadMore() {
+    void setSize(size + 1);
   }
 
-  // Sentinela de scroll infinito: dispara loadMore() quando entra na viewport,
-  // desde que não haja um carregamento em andamento e ainda haja mais páginas.
+  // Sentinela de scroll infinito: dispara loadMore() quando entra na viewport
+  // do container rolável, desde que não haja um carregamento em andamento e
+  // ainda haja mais páginas.
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel || isLoading) return;
 
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting && hasMore && !isLoadingMore) {
-        void loadMore();
-      }
-    });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasMore && !isLoadingMore) {
+          loadMore();
+        }
+      },
+      { root: scrollRef.current },
+    );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasMore, isLoadingMore, isLoading, page, search, gender]);
+  }, [hasMore, isLoadingMore, isLoading, size]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -153,10 +123,13 @@ export function PatientList({
             <Skeleton key={i} className="h-16 w-full" />
           ))}
         </div>
-      ) : error ? (
-        <ErrorState message={error} />
+      ) : errorMessage ? (
+        <ErrorState message={errorMessage} />
       ) : (
-        <>
+        <div
+          ref={scrollRef}
+          className="flex max-h-[60vh] flex-col gap-2 overflow-y-auto pr-1 lg:max-h-[calc(100dvh-13rem)]"
+        >
           <p className="text-xs text-muted-foreground">
             <span className="font-data">{patients.length}</span> pacientes carregados
             {hasMore && " · há mais"}
@@ -197,7 +170,7 @@ export function PatientList({
             </Card>
           ))}
           {patients.length === 0 &&
-            (search.trim() || gender ? (
+            (debouncedSearch.trim() || gender ? (
               <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/50 px-6 py-10 text-center">
                 <Search className="size-6 text-muted-foreground" aria-hidden="true" />
                 <p className="text-sm font-medium">Nenhum paciente encontrado</p>
@@ -234,7 +207,7 @@ export function PatientList({
           )}
 
           <div ref={sentinelRef} aria-hidden="true" />
-        </>
+        </div>
       )}
     </div>
   );

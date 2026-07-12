@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAsync } from "@/hooks/useAsync";
+import { useApi } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import {
   resourcesOfType,
@@ -52,9 +52,9 @@ function TimelineSkeleton() {
 }
 
 export function ClinicalHistory({ patientId }: { patientId: string }) {
-  const { data, error, isLoading } = useAsync(
+  const { data, error, isLoading } = useApi(
+    ["patientHistory", patientId],
     () => api.patientHistory(patientId),
-    [patientId],
   );
 
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_FILTERS)[number]>("Todos");

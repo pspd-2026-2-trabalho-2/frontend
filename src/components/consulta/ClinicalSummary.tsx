@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAsync } from "@/hooks/useAsync";
+import { useApi } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import {
   resourcesOfType,
@@ -15,9 +15,9 @@ import {
 import { formatDate } from "@/lib/utils";
 
 export function ClinicalSummary({ patientId }: { patientId: string }) {
-  const { data, error, isLoading } = useAsync(
+  const { data, error, isLoading } = useApi(
+    ["patientSummary", patientId],
     () => api.patientSummary(patientId),
-    [patientId],
   );
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;

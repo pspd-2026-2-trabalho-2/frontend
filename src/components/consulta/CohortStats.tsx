@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAsync } from "@/hooks/useAsync";
+import { useApi } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import {
   AGE_RANGE_EXTENSION_URL,
@@ -63,8 +63,8 @@ function groupByPatient(resources: FhirResource[]) {
 }
 
 export function CohortStats({ code }: { code: string }) {
-  const stats = useAsync(() => api.cohortStatistics(code), [code]);
-  const exams = useAsync(() => api.cohortExams(code), [code]);
+  const stats = useApi(["cohortStatistics", code], () => api.cohortStatistics(code));
+  const exams = useApi(["cohortExams", code], () => api.cohortExams(code));
 
   if (stats.isLoading || exams.isLoading) return <Skeleton className="h-64 w-full" />;
   if (stats.error) return <ErrorState message={stats.error} />;
@@ -74,7 +74,7 @@ export function CohortStats({ code }: { code: string }) {
   const total = Number(stats.data.totalPatients ?? "0");
   const female = stats.data.bySex?.find((s) => s.key === "female")?.percentage ?? 0;
   const male = stats.data.bySex?.find((s) => s.key === "male")?.percentage ?? 0;
-  const groups = groupByPatient(exams.data.entry.map((e) => e.resource));
+  const groups = groupByPatient((exams.data.entry ?? []).map((e) => e.resource));
 
   return (
     <div className="flex flex-col gap-6">

@@ -4,7 +4,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAsync } from "@/hooks/useAsync";
+import { useApi } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import { resourcesOfType, type Observation } from "@/lib/fhir";
 import { formatDate } from "@/lib/utils";
@@ -21,9 +21,9 @@ function TableSkeleton() {
 }
 
 export function LabResults({ patientId }: { patientId: string }) {
-  const { data, error, isLoading } = useAsync(
+  const { data, error, isLoading } = useApi(
+    ["patientHistory", patientId],
     () => api.patientHistory(patientId),
-    [patientId],
   );
 
   const [filter, setFilter] = useState("");

@@ -5,7 +5,7 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAsync } from "@/hooks/useAsync";
+import { useApi } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import { resourcesOfType, type MedicationRequest } from "@/lib/fhir";
 import { formatDate } from "@/lib/utils";
@@ -24,9 +24,9 @@ function TableSkeleton() {
 }
 
 export function Medications({ patientId }: { patientId: string }) {
-  const { data, error, isLoading } = useAsync(
+  const { data, error, isLoading } = useApi(
+    ["patientHistory", patientId],
     () => api.patientHistory(patientId),
-    [patientId],
   );
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");

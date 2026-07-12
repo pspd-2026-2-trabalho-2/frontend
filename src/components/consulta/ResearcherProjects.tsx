@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAsync } from "@/hooks/useAsync";
+import { useApi } from "@/hooks/useApi";
 import { api } from "@/lib/api";
 import { resourcesOfType, type ResearchStudy } from "@/lib/fhir";
 
@@ -23,7 +23,7 @@ const STATUS_VARIANT: Record<ResearchStudy["status"], "default" | "secondary" | 
 };
 
 export function ResearcherProjects() {
-  const { data, error, isLoading } = useAsync(() => api.projects(), []);
+  const { data, error, isLoading } = useApi(["projects"], () => api.projects());
 
   if (isLoading) return <Skeleton className="h-40 w-full" />;
   if (error) return <ErrorState message={error} />;
