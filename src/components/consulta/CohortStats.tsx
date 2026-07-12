@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAsync } from "@/hooks/useAsync";
@@ -28,9 +29,17 @@ function DistributionList({ title, data }: { title: string; data: CohortPercenta
       </CardHeader>
       <CardContent className="flex flex-col gap-1 text-sm">
         {data.map((item) => (
-          <div key={item.key} className="flex items-center justify-between">
-            <span>{item.key}</span>
-            <span className="font-data">{item.percentage}%</span>
+          <div key={item.key} className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span>{item.key}</span>
+              <span className="font-data">{item.percentage}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-alt">
+              <div
+                className="h-full rounded-full bg-primary/15"
+                style={{ width: `${item.percentage}%` }}
+              />
+            </div>
           </div>
         ))}
         {data.length === 0 && (
@@ -58,8 +67,8 @@ export function CohortStats({ code }: { code: string }) {
   const exams = useAsync(() => api.cohortExams(code), [code]);
 
   if (stats.isLoading || exams.isLoading) return <Skeleton className="h-64 w-full" />;
-  if (stats.error) return <p className="text-sm text-destructive">{stats.error}</p>;
-  if (exams.error) return <p className="text-sm text-destructive">{exams.error}</p>;
+  if (stats.error) return <ErrorState message={stats.error} />;
+  if (exams.error) return <ErrorState message={exams.error} />;
   if (!stats.data || !exams.data) return null;
 
   const total = Number(stats.data.totalPatients ?? "0");

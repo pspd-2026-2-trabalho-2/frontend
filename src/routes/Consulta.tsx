@@ -1,3 +1,4 @@
+import { UserRoundSearch } from "lucide-react";
 import { useState } from "react";
 
 import { AppShell } from "@/components/layout/AppShell";
@@ -8,6 +9,7 @@ import { LabResults } from "@/components/consulta/LabResults";
 import { Medications } from "@/components/consulta/Medications";
 import { PatientList } from "@/components/consulta/PatientList";
 import { ResearcherProjects } from "@/components/consulta/ResearcherProjects";
+import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/features/auth/useAuth";
@@ -52,9 +54,14 @@ function MedicoOuEstagiarioView() {
             </TabsContent>
           </Tabs>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            Selecione um paciente na lista para ver o prontuário.
-          </p>
+          <Card>
+            <CardContent className="flex min-h-80 flex-col items-center justify-center gap-3 p-6 text-center">
+              <UserRoundSearch className="size-8 text-muted-foreground" aria-hidden="true" />
+              <p className="text-sm text-muted-foreground">
+                Selecione um paciente na lista para ver o prontuário.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

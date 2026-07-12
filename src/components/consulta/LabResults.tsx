@@ -1,11 +1,24 @@
 import { useMemo, useState } from "react";
 
+import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAsync } from "@/hooks/useAsync";
 import { api } from "@/lib/api";
 import { resourcesOfType, type Observation } from "@/lib/fhir";
+import { formatDate } from "@/lib/utils";
+
+function TableSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      <Skeleton className="h-8 w-full" />
+      {[0, 1, 2, 3].map((i) => (
+        <Skeleton key={i} className="h-10 w-full" />
+      ))}
+    </div>
+  );
+}
 
 export function LabResults({ patientId }: { patientId: string }) {
   const { data, error, isLoading } = useAsync(
@@ -26,8 +39,8 @@ export function LabResults({ patientId }: { patientId: string }) {
     return observations.filter((o) => o.code.text.toLowerCase().includes(needle));
   }, [observations, filter]);
 
-  if (isLoading) return <Skeleton className="h-48 w-full" />;
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (isLoading) return <TableSkeleton />;
+  if (error) return <ErrorState message={error} />;
   if (!data) return null;
 
   return (
@@ -41,7 +54,7 @@ export function LabResults({ patientId }: { patientId: string }) {
         <TableHeader>
           <TableRow>
             <TableHead>Exame</TableHead>
-            <TableHead>Valor</TableHead>
+            <TableHead className="text-right">Valor</TableHead>
             <TableHead>Data</TableHead>
           </TableRow>
         </TableHeader>
@@ -49,10 +62,10 @@ export function LabResults({ patientId }: { patientId: string }) {
           {filteredObservations.map((o) => (
             <TableRow key={o.id}>
               <TableCell>{o.code.text}</TableCell>
-              <TableCell className="font-data">
+              <TableCell className="font-data text-right">
                 {o.valueQuantity?.value} {o.valueQuantity?.unit}
               </TableCell>
-              <TableCell className="font-data">{o.effectiveDateTime}</TableCell>
+              <TableCell className="font-data">{formatDate(o.effectiveDateTime)}</TableCell>
             </TableRow>
           ))}
           {observations.length === 0 && (

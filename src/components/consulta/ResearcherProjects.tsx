@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAsync } from "@/hooks/useAsync";
 import { api } from "@/lib/api";
@@ -25,7 +26,7 @@ export function ResearcherProjects() {
   const { data, error, isLoading } = useAsync(() => api.projects(), []);
 
   if (isLoading) return <Skeleton className="h-40 w-full" />;
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (error) return <ErrorState message={error} />;
   if (!data) return null;
 
   const projects = resourcesOfType<ResearchStudy>(data, "ResearchStudy");

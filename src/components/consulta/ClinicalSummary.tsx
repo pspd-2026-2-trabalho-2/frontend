@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAsync } from "@/hooks/useAsync";
 import { api } from "@/lib/api";
@@ -11,6 +12,7 @@ import {
   type Observation,
   type Patient,
 } from "@/lib/fhir";
+import { formatDate } from "@/lib/utils";
 
 export function ClinicalSummary({ patientId }: { patientId: string }) {
   const { data, error, isLoading } = useAsync(
@@ -19,7 +21,7 @@ export function ClinicalSummary({ patientId }: { patientId: string }) {
   );
 
   if (isLoading) return <Skeleton className="h-64 w-full" />;
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (error) return <ErrorState message={error} />;
   if (!data) return null;
 
   const patient = resourcesOfType<Patient>(data, "Patient")[0];
@@ -41,7 +43,7 @@ export function ClinicalSummary({ patientId }: { patientId: string }) {
           </p>
           <p>
             <span className="text-muted-foreground">Nascimento: </span>
-            <span className="font-data">{patient?.birthDate}</span>
+            <span className="font-data">{formatDate(patient?.birthDate)}</span>
           </p>
           {patient?.address?.[0] && (
             <p>
@@ -70,7 +72,7 @@ export function ClinicalSummary({ patientId }: { patientId: string }) {
             </p>
             <p>
               <span className="text-muted-foreground">Data: </span>
-              <span className="font-data">{encounter.period.start}</span>
+              <span className="font-data">{formatDate(encounter.period.start)}</span>
             </p>
           </CardContent>
         </Card>

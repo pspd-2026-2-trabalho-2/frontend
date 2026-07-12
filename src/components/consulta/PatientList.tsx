@@ -1,19 +1,31 @@
+import { Search, UsersRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/features/auth/useAuth";
 import { api } from "@/lib/api";
 import { resourcesOfType, type Patient } from "@/lib/fhir";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 const PAGE_SIZE = 50;
 
 type Gender = "" | "male" | "female";
+
+// Initials for the monogram tile: first letter of the first and last word,
+// uppercase, max two characters. Falls back gracefully for single-word or
+// empty/missing names (e.g. the anonymized intern view).
+function initials(name: string | undefined): string {
+  const words = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+}
 
 export function PatientList({
   selectedId,
@@ -142,7 +154,7 @@ export function PatientList({
           ))}
         </div>
       ) : error ? (
-        <p className="text-sm text-destructive">{error}</p>
+        <ErrorState message={error} />
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
@@ -155,25 +167,53 @@ export function PatientList({
               key={patient.id}
               role="button"
               tabIndex={0}
+              aria-selected={selectedId === patient.id}
               onClick={() => onSelect(patient.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(patient.id);
+                }
+              }}
               className={cn(
-                "cursor-pointer p-4 transition-shadow hover:shadow-hover",
-                selectedId === patient.id && "ring-2 ring-primary/40",
+                "cursor-pointer border-l-4 border-l-transparent p-4 transition-shadow hover:shadow-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+                selectedId === patient.id && "border-l-primary bg-primary/5",
               )}
             >
-              <CardContent className="flex items-center justify-between p-0">
-                <div>
-                  <p className="font-medium">{patient.name?.[0]?.text}</p>
+              <CardContent className="flex items-center gap-3 p-0">
+                <div
+                  aria-hidden="true"
+                  className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-data text-sm font-medium text-primary"
+                >
+                  {initials(patient.name?.[0]?.text)}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{patient.name?.[0]?.text}</p>
                   <p className="font-data text-xs text-muted-foreground">
-                    {patient.birthDate} · {patient.gender === "male" ? "Masculino" : "Feminino"}
+                    {formatDate(patient.birthDate)} · {patient.gender === "male" ? "Masculino" : "Feminino"}
                   </p>
                 </div>
               </CardContent>
             </Card>
           ))}
-          {patients.length === 0 && (
-            <p className="text-sm text-muted-foreground">Nenhum paciente vinculado.</p>
-          )}
+          {patients.length === 0 &&
+            (search.trim() || gender ? (
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/50 px-6 py-10 text-center">
+                <Search className="size-6 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-medium">Nenhum paciente encontrado</p>
+                <p className="text-xs text-muted-foreground">
+                  Tente ajustar sua busca ou filtro.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-border bg-card/50 px-6 py-10 text-center">
+                <UsersRound className="size-6 text-muted-foreground" aria-hidden="true" />
+                <p className="text-sm font-medium">Nenhum paciente vinculado</p>
+                <p className="text-xs text-muted-foreground">
+                  Pacientes aparecerão aqui quando forem atribuídos a você.
+                </p>
+              </div>
+            ))}
 
           {isLoadingMore &&
             [0, 1, 2].map((i) => <Skeleton key={`more-${i}`} className="h-16 w-full" />)}

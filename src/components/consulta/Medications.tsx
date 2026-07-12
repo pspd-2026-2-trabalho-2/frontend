@@ -1,14 +1,27 @@
 import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
+import { ErrorState } from "@/components/ui/error-state";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAsync } from "@/hooks/useAsync";
 import { api } from "@/lib/api";
 import { resourcesOfType, type MedicationRequest } from "@/lib/fhir";
+import { formatDate } from "@/lib/utils";
 
 type StatusFilter = "all" | "active" | "other";
+
+function TableSkeleton() {
+  return (
+    <div className="flex flex-col gap-2">
+      <Skeleton className="h-8 w-full" />
+      {[0, 1, 2, 3].map((i) => (
+        <Skeleton key={i} className="h-10 w-full" />
+      ))}
+    </div>
+  );
+}
 
 export function Medications({ patientId }: { patientId: string }) {
   const { data, error, isLoading } = useAsync(
@@ -29,8 +42,8 @@ export function Medications({ patientId }: { patientId: string }) {
     return medications;
   }, [medications, statusFilter]);
 
-  if (isLoading) return <Skeleton className="h-48 w-full" />;
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (isLoading) return <TableSkeleton />;
+  if (error) return <ErrorState message={error} />;
   if (!data) return null;
 
   return (
@@ -65,7 +78,7 @@ export function Medications({ patientId }: { patientId: string }) {
                   {m.status === "active" ? "Em uso" : m.status}
                 </Badge>
               </TableCell>
-              <TableCell className="font-data">{m.authoredOn}</TableCell>
+              <TableCell className="font-data">{formatDate(m.authoredOn)}</TableCell>
             </TableRow>
           ))}
           {medications.length === 0 && (

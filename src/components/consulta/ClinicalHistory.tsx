@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAsync } from "@/hooks/useAsync";
 import { api } from "@/lib/api";
@@ -12,6 +14,7 @@ import {
   type MedicationRequest,
   type Observation,
 } from "@/lib/fhir";
+import { formatDate } from "@/lib/utils";
 
 interface TimelineEntry {
   date: string;
@@ -20,6 +23,33 @@ interface TimelineEntry {
 }
 
 const TYPE_FILTERS = ["Todos", "Atendimento", "Diagnóstico", "Exame", "Medicação"] as const;
+
+type BadgeVariant = "default" | "accent" | "secondary" | "outline";
+
+// Contained mapping across the four event types using only existing variants:
+// Diagnóstico carries the most clinical weight -> primary (default); Medicação
+// -> gold accent (matches ClinicalSummary's medication badges); Exame -> neutral
+// secondary; Atendimento is structural context -> lightest outline.
+const LABEL_VARIANT: Record<string, BadgeVariant> = {
+  Atendimento: "outline",
+  Diagnóstico: "default",
+  Exame: "secondary",
+  Medicação: "accent",
+};
+
+function TimelineSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      {[0, 1, 2, 3].map((i) => (
+        <div key={i} className="flex items-center gap-4">
+          <Skeleton className="h-4 w-20 shrink-0" />
+          <Skeleton className="h-6 w-24 shrink-0" />
+          <Skeleton className="h-4 w-full" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function ClinicalHistory({ patientId }: { patientId: string }) {
   const { data, error, isLoading } = useAsync(
@@ -60,8 +90,8 @@ export function ClinicalHistory({ patientId }: { patientId: string }) {
     return entries.filter((entry) => entry.label === typeFilter);
   }, [entries, typeFilter]);
 
-  if (isLoading) return <Skeleton className="h-64 w-full" />;
-  if (error) return <p className="text-sm text-destructive">{error}</p>;
+  if (isLoading) return <TimelineSkeleton />;
+  if (error) return <ErrorState message={error} />;
   if (!data) return null;
 
   return (
@@ -83,8 +113,12 @@ export function ClinicalHistory({ patientId }: { patientId: string }) {
         <CardContent className="flex flex-col divide-y divide-border p-0">
           {filteredEntries.map((entry, i) => (
             <div key={i} className="flex items-center gap-4 p-4 text-sm">
-              <span className="font-data w-24 shrink-0 text-muted-foreground">{entry.date}</span>
-              <span className="w-28 shrink-0 font-medium">{entry.label}</span>
+              <span className="font-data w-24 shrink-0 text-muted-foreground">
+                {formatDate(entry.date)}
+              </span>
+              <span className="w-28 shrink-0">
+                <Badge variant={LABEL_VARIANT[entry.label] ?? "outline"}>{entry.label}</Badge>
+              </span>
               <span>{entry.detail}</span>
             </div>
           ))}
