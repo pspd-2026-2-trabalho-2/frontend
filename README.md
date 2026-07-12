@@ -55,6 +55,26 @@ Todas em `.env.example`:
 - `VITE_KEYCLOAK_URL`, `VITE_KEYCLOAK_REALM`, `VITE_KEYCLOAK_CLIENT_ID` — endpoint do Keycloak.
 - `VITE_API_URL` — URL do API Gateway.
 
+São embutidas em **build-time**, não runtime. `.env` (dev, com `.env` fora do
+Docker build via `.dockerignore`) aponta para `localhost`; `.env.production`
+(commitado, usado por `npm run build` e pela imagem Docker) aponta para o
+subpath `/grupo3` do cluster kiriland.
+
+## Deploy no cluster kiriland
+
+O app é servido em `https://kiriland.unb.br/grupo3/`.
+
+1. Push em `main` → o workflow [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
+   builda a imagem (usando `.env.production`, com `base: '/grupo3/'` no Vite)
+   e publica em `ghcr.io/pspd-2026-2-trabalho-2/frontend:latest`.
+2. O CI **não** faz deploy no cluster — é preciso reiniciar o pod manualmente
+   para puxar a imagem nova:
+   ```bash
+   kubectl rollout restart deployment/<nome-do-deployment-frontend> -n <namespace>
+   ```
+   (verifique `imagePullPolicy: Always` no manifest; com `IfNotPresent` e tag
+   `latest` o restart não baixa a imagem nova).
+
 ## Estrutura
 
 ```

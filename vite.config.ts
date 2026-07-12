@@ -3,7 +3,10 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { defineConfig } from "vite";
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // O cluster kiriland serve o app sob /grupo3, então os assets do build
+  // precisam desse prefixo. Em dev mantemos "/" para não mudar a URL local.
+  base: command === "build" ? "/grupo3/" : "/",
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
@@ -25,4 +28,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
