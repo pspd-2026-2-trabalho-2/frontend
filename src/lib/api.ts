@@ -77,6 +77,9 @@ export const api = {
   patientHistory: (id: string) => request<FhirBundle>(`/api/patients/${id}/history`),
   cohortStatistics: (code: string) =>
     request<CohortStatistics>(`/api/cohorts/${code}/statistics`),
-  cohortExams: (code: string) => request<FhirBundle>(`/api/cohorts/${code}/exams`),
+  cohortExams: (code: string, page = 1, pageSize = 50) => {
+    const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    return requestPage<FhirBundle>(`/api/cohorts/${code}/exams?${params}`);
+  },
   projects: () => request<FhirBundle>("/api/me/projects"),
 };
