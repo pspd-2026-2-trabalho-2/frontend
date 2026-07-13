@@ -1,16 +1,23 @@
+import { useEffect } from "react";
+import useSWRInfinite from "swr/infinite";
+
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useApi } from "@/hooks/useApi";
-import { api } from "@/lib/api";
+import { api, type Page } from "@/lib/api";
 import {
   AGE_RANGE_EXTENSION_URL,
   type CohortPercentage,
+  type FhirBundle,
   type FhirResource,
   type Observation,
   type Patient,
 } from "@/lib/fhir";
+
+const PAGE_SIZE = 50;
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
@@ -64,17 +71,43 @@ function groupByPatient(resources: FhirResource[]) {
 
 export function CohortStats({ code }: { code: string }) {
   const stats = useApi(["cohortStatistics", code], () => api.cohortStatistics(code));
-  const exams = useApi(["cohortExams", code], () => api.cohortExams(code));
 
-  if (stats.isLoading || exams.isLoading) return <Skeleton className="h-64 w-full" />;
+  type ExamsKey = readonly ["cohortExams", string, number];
+  const getExamsKey = (index: number, previousPageData: Page<FhirBundle> | null): ExamsKey | null => {
+    if (previousPageData && !previousPageData.hasMore) return null;
+    return ["cohortExams", code, index + 1];
+  };
+
+  const {
+    data: examsPages,
+    size,
+    setSize,
+    isLoading: examsLoading,
+    error: examsErrorRaw,
+  } = useSWRInfinite<Page<FhirBundle>>(
+    getExamsKey,
+    ([, cond, page]: ExamsKey) => api.cohortExams(cond, page, PAGE_SIZE),
+    { revalidateFirstPage: false },
+  );
+
+  useEffect(() => {
+    void setSize(1);
+  }, [code, setSize]);
+
+  const examsError = examsErrorRaw instanceof Error ? examsErrorRaw.message : examsErrorRaw ? "Erro inesperado." : null;
+  const hasMoreExams = examsPages?.[examsPages.length - 1]?.hasMore ?? false;
+  const isLoadingMoreExams = size > 0 && examsPages && typeof examsPages[size - 1] === "undefined";
+
+  if (stats.isLoading || examsLoading) return <Skeleton className="h-64 w-full" />;
   if (stats.error) return <ErrorState message={stats.error} />;
-  if (exams.error) return <ErrorState message={exams.error} />;
-  if (!stats.data || !exams.data) return null;
+  if (examsError) return <ErrorState message={examsError} />;
+  if (!stats.data || !examsPages) return null;
 
   const total = Number(stats.data.totalPatients ?? "0");
   const female = stats.data.bySex?.find((s) => s.key === "female")?.percentage ?? 0;
   const male = stats.data.bySex?.find((s) => s.key === "male")?.percentage ?? 0;
-  const groups = groupByPatient((exams.data.entry ?? []).map((e) => e.resource));
+  const examEntries = examsPages.flatMap((p) => p.data.entry ?? []);
+  const groups = groupByPatient(examEntries.map((e) => e.resource));
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,6 +154,17 @@ export function CohortStats({ code }: { code: string }) {
             </TableBody>
           </Table>
         </CardContent>
+        {hasMoreExams && (
+          <CardContent className="pt-0">
+            <Button
+              variant="secondary"
+              disabled={isLoadingMoreExams}
+              onClick={() => void setSize(size + 1)}
+            >
+              {isLoadingMoreExams ? "Carregando..." : "Carregar mais"}
+            </Button>
+          </CardContent>
+        )}
       </Card>
     </div>
   );
